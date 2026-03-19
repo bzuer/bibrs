@@ -1,28 +1,79 @@
-# bibrs — Initial Planning
+# bibrs
 
-## Initial Scope
+A BibTeX bibliography manager written in Rust. Reads `.bib` files, reports problems, normalizes data, queries external APIs, and will serve a local web GUI.
 
-**bibrs** functions as a bibliographic manager for BibTeX files, built in Rust.
+## Current Status
 
-The problem to be solved: maintaining a clean, consistent, and usable bibliographic database is a repetitive and error-prone task. 
+| Layer | Status | Output |
+|-------|--------|--------|
+| **Foundation** | Complete | `bibrs check\|format\|stats` |
+| **Structure** | Complete | `bibrs normalize\|search` |
+| **Surface** | Not started | `localhost:3000` web GUI |
 
-Existing tools such as JabRef suffer from chronic issues—corrupted encoding, excessive memory consumption, crashes—which transform the workflow into a sequence of frustrations. 
+Tested against a real 5544-entry `.bib` file (77K lines, 5.4MB). 100 tests, zero clippy warnings, cargo doc clean.
 
-Bibliographic APIs (CrossRef, OpenAlex, Google Books, OpenLibrary) exist and are rich, but the path between finding a reference and having it cleanly standardized in the `.bib` file involves excessive manual steps.
+## Quick Start
 
-The objective: a lightweight tool, accessed via a browser on a local port, unifying search, import, normalization, and maintenance of bibliographic references in a single, frictionless flow. 
+```bash
+cargo build
+cargo run -- check file.bib           # parse and report errors
+cargo run -- format file.bib          # reformat to stdout
+cargo run -- format --in-place file.bib
+cargo run -- stats file.bib           # entry counts by type
+cargo run -- normalize file.bib       # normalize fields + detect duplicates
+cargo run -- search --source crossref --doi 10.1145/1327452.1327492
+cargo run -- search --source openalex --query "attention is all you need"
+```
 
-The `.bib` file remains the native format—no mandatory intermediary database, no lock-in. Real files with issues (broken encoding, malformed fields, accumulated inconsistencies) are read, problems are reported, and correction mechanisms are provided.
+## Project Layout
 
-A Rust binary is expected to open a `.bib` file, expose a local web interface for navigation, search, API imports, name and field normalization, duplicate detection, and saving—executing rapidly, with low resource consumption, and tolerance for imperfect data. 
+```
+bibrs/
+├── Cargo.toml                  # workspace root
+├── src/main.rs                 # unified CLI (check, format, stats, normalize, search)
+├── crates/
+│   ├── bibrs-core/             # model, parser, serializer, encoding, error, config
+│   ├── bibrs-normalize/        # author names, field normalization, dedup, cite keys
+│   └── bibrs-sources/          # BibSource trait, CrossRef, OpenAlex, Google Books, OpenLibrary, cache
+└── tests/
+    └── bib.bib                 # real-world test fixture (5544 entries)
+```
 
-The project is structured in layers to progressively exercise ownership, function composition, traits, async, and system architecture specific to the Rust language.
+## Configuration
+
+Optional INI file at `~/.config/bibrs/config.ini`:
+
+```ini
+[sources]
+mailto = user@example.com
+
+[cache]
+enabled = true
+ttl_search_days = 7
+ttl_id_days = 30
+
+[normalize]
+name_format = last_comma_first
+protect_acronyms = true
+doi_strip_prefix = true
+
+[dedup]
+fuzzy_threshold = 0.90
+```
+
+All fields have sensible defaults. The file is not required.
+
+Structured logging via `BIBRS_LOG` environment variable:
+
+```bash
+BIBRS_LOG=debug cargo run -- search --source crossref --doi 10.1000/xyz
+```
 
 ---
 
-## Conceptualization
+## Design
 
-Three layers. Each must be complete, tested, and functional before the next is initiated.
+**bibrs** is structured in three layers, each exercising progressively deeper Rust concepts.
 
 ```
 Surface      Web GUI, integrated flow, user experience
@@ -32,11 +83,11 @@ Foundation   Parser, model, serializer, encoding, CLI
 
 ---
 
-# FOUNDATION
+# FOUNDATION (complete)
 
-Objective: read any `.bib` file, report problems, rewrite cleanly. No network, no async, no heavy dependencies. Final product: a Rust library and CLI functioning as a `.bib` linter/formatter.
+Objective: read any `.bib` file, report problems, rewrite cleanly. No network, no async, no heavy dependencies. A Rust library and CLI functioning as a `.bib` linter/formatter.
 
-## File Structure
+## Original File Structure
 
 ```
 bibrs/
@@ -1349,9 +1400,7 @@ Implementation proceeds to the Structure layer strictly following satisfaction o
 
 ---
 
-# STRUCTURE
-
-Implementation must not begin until the Foundation is complete. The following is a specification, not final code.
+# STRUCTURE (complete)
 
 ## Scope
 
@@ -1361,7 +1410,7 @@ Implementation must not begin until the Foundation is complete. The following is
 * Cite key generation.
 * External API integration (CrossRef, OpenAlex, Google Books, OpenLibrary).
 * API response disk caching.
-* User configuration file parsing (TOML).
+* User configuration file parsing (INI).
 * Structured logging (`tracing`).
 
 ## Crate division criteria
@@ -1505,31 +1554,31 @@ File contents consist of raw JSON response data coupled with a timestamp. TTL pa
 
 ### User Configuration
 
-Target file: `~/.config/bibrs/config.toml` (leveraging `dirs` crate). Load sequence executes at initialization, overridden by CLI flag inputs. Default specifications must be robust—file existence is non-mandatory.
+Target file: `~/.config/bibrs/config.ini` (leveraging `dirs` crate). Load sequence executes at initialization, overridden by CLI flag inputs. Default specifications must be robust—file existence is non-mandatory. INI format chosen for simplicity (no API keys required at test volumes — only email for CrossRef polite pool).
 
-```toml
+```ini
 [serialize]
 indent = "  "
 align_equals = true
 trailing_comma = true
-field_order = ["author", "title", "year", "journal", "volume", "pages", "doi"]
+field_order = author, title, year, journal, volume, pages, doi
 
 [normalize]
-name_format = "last_comma_first"    # last_comma_first | first_last | abbreviated
+name_format = last_comma_first
 protect_acronyms = true
 doi_strip_prefix = true
 
 [citekey]
-pattern = "{auth}{year}{shorttitle}"
+pattern = {auth}{year}{shorttitle}
 lowercase = true
-dedup_suffix = "alpha"              # alpha | numeric
+dedup_suffix = alpha
 
 [dedup]
 fuzzy_threshold = 0.90
 
 [sources]
-mailto = ""                          # email parameter for CrossRef polite pool
-default_sources = ["crossref", "openalex"]
+mailto =
+default_sources = crossref, openalex
 
 [cache]
 enabled = true
@@ -1537,7 +1586,7 @@ ttl_search_days = 7
 ttl_id_days = 30
 ```
 
-Implementation design: `Config` struct implementing `#[derive(Deserialize)]`, populated via default specifications via `Default` implementation, merged with TOML data via `toml` crate parsing.
+Implementation design: `Config` struct with `Default` implementation, loaded via `rust-ini` crate parsing.
 
 ### Logging
 
@@ -1572,7 +1621,6 @@ async-trait = "0.1"
 futures = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-toml = "0.8"
 dirs = "6"
 sha2 = "0.10"                   # hash generation for query caching
 wiremock = "0.6"                # dev-dependency handling HTTP mocks
@@ -1587,7 +1635,7 @@ wiremock = "0.6"                # dev-dependency handling HTTP mocks
 5.  Duplicate detection algorithms locate specified pairings within test files.
 6.  API implementations (minimum: CrossRef and OpenAlex) yield parseable payload data importing cleanly as `Entry` structures.
 7.  Disk caching mechanism functions: identical secondary query occurrences circumvent HTTP execution protocols.
-8.  `~/.config/bibrs/config.toml` is parsed and parameters applied. Default parameters function seamlessly without file presence.
+8.  `~/.config/bibrs/config.ini` is parsed and parameters applied. Default parameters function seamlessly without file presence.
 9.  `BIBRS_LOG=debug` generates structured execution logs detailing HTTP operations.
 10. CLI functionality extends to include: `bibrs normalize <file>`, `bibrs search --source crossref --doi 10.xxx/yyy`.
 
@@ -1693,7 +1741,7 @@ Framework integration (Alpine.js or htmx) is restricted until JS complexity exce
 FOUNDATION   model → error → encoding → parser (nom) → serializer → CLI → tests → doc
              Output constraint: bibrs check|format|stats functions flawlessly.
 
-STRUCTURE    workspace extraction → config (TOML) → normalize (names, fields, dedup, keys) → sources (APIs + cache + logging) → mocks → CLI extension
+STRUCTURE    workspace extraction → config (INI) → normalize (names, fields, dedup, keys) → sources (APIs + cache + logging) → mocks → CLI extension
              Output constraint: bibrs normalize|search functions flawlessly. Cache, configuration, and logging systems operational.
 
 SURFACE      server → endpoints → frontend (ES6 modules) → integrated sequence
