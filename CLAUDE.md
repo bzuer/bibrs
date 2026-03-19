@@ -93,7 +93,9 @@ bibrs/
 ## Code Style Rules
 
 - **English everywhere.** All code, metadata, documentation, UI text, component names, variables, tests, commits, and PRs in technical English.
-- **No inline comments.** Do not add `//` comments or annotations in source code. When modifying files, remove any inline comments in the edited sections. Doc comments (`///`) on public items are required — they are API documentation, not inline comments.
+- **Comments policy.**
+  - **Allowed:** `///` doc comments on public items (structs, enums, traits, functions, modules). These are structural documentation and are required — `cargo doc` must build without errors.
+  - **Forbidden:** `//` inline comments, `/* */` block comments, explanatory annotations, TODO/FIXME markers, commented-out code. When modifying files, remove any such comments in the edited sections.
 - **Conventional Commits.** `feat:`, `fix:`, `chore:`, etc. Short and imperative.
 - **PRs.** English description, linked issues, screenshots for visual changes, tests and docs updated.
 - **Commit at the end of every session or after significant changes.**
