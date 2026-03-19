@@ -1,0 +1,21 @@
+{
+  "meta": {"count": 1},
+  "results": [
+    {
+      "id": "https://openalex.org/W2741809807",
+      "doi": "https://doi.org/10.1038/s41586-019-1923-7",
+      "title": "Attention is all you need",
+      "type": "journal-article",
+      "publication_year": 2017,
+      "authorships": [
+        {"author": {"display_name": "Ashish Vaswani"}},
+        {"author": {"display_name": "Noam Shazeer"}}
+      ],
+      "primary_location": {
+        "source": {
+          "display_name": "Advances in Neural Information Processing Systems"
+        }
+      }
+    }
+  ]
+}

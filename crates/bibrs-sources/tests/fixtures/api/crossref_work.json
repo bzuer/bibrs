@@ -1,0 +1,21 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message": {
+    "DOI": "10.1145/1327452.1327492",
+    "type": "journal-article",
+    "title": ["MapReduce: simplified data processing on large clusters"],
+    "author": [
+      {"given": "Jeffrey", "family": "Dean"},
+      {"given": "Sanjay", "family": "Ghemawat"}
+    ],
+    "container-title": ["Communications of the ACM"],
+    "published": {
+      "date-parts": [[2008, 1]]
+    },
+    "volume": "51",
+    "page": "107-113",
+    "ISSN": ["0001-0782"],
+    "score": 18.5
+  }
+}

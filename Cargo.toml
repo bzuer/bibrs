@@ -1,14 +1,16 @@
+[workspace]
+members = ["crates/bibrs-core", "crates/bibrs-normalize", "crates/bibrs-sources"]
+resolver = "2"
+
 [package]
 name = "bibrs"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-indexmap = { version = "2", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-thiserror = "2"
-encoding_rs = "0.8"
-chardetng = "0.1"
-unicode-normalization = "0.1"
+bibrs-core = { path = "crates/bibrs-core" }
+bibrs-normalize = { path = "crates/bibrs-normalize" }
+bibrs-sources = { path = "crates/bibrs-sources" }
 clap = { version = "4", features = ["derive"] }
-nom = "8"
+tokio = { version = "1", features = ["full"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

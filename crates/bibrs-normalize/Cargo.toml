@@ -1,0 +1,9 @@
+[package]
+name = "bibrs-normalize"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bibrs-core = { path = "../bibrs-core" }
+unicode-normalization = "0.1"
+indexmap = "2"
