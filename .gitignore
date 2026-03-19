@@ -3,5 +3,4 @@
 docs/
 .DS_Store
 ._*
-tests/bib.bib
-
+tests/
